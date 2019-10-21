@@ -15,7 +15,7 @@ model_est = model_param; model_est.model_name = 'Creeping model';
 
 perturbation = [1]; % for sensitivity analysis
 test = 1; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
-Npc = 800;
+Npc = 1500;
 Nr = 1; % number of simulation runs
 spatial_correlation = false;
 show_sim = false;
@@ -23,7 +23,7 @@ show_est = false;
 len = 60; % 60 characteristic length for spatial correlation
 T_pi = []; % particle influence summary table
 directory = pwd;
-foldername = sprintf('test%d_sim_porous',test);
+foldername = sprintf('test%d_fil_papf_corr',test);
 mkdir(foldername);
 directory = fullfile(directory,foldername);
 
@@ -244,10 +244,10 @@ for pc = 1:length(Npc)
             if show_est
                 if mod(n,5)==0
                     fig = plot_est(n,U_true,U_res,model_est,pf,U_meas_true,x_next);
-                    drawnow
-                    %             filename = sprintf('pf_test%d_%03d',test,n);
-                    %             path = fullfile(directory,filename);
-                    %             saveas(gca,path,'png')
+%                     drawnow
+                                filename = sprintf('pf_test%d_%03d',test,n);
+                                path = fullfile(directory,filename);
+                                saveas(gca,path,'png')
                 end
             end
             

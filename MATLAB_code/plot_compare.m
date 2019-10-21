@@ -2,7 +2,7 @@ function fig = plot_compare(n,U_true,U_est,model)
 % class 1
 fig = subplot(2,1,1);
 % --- initial condition
-% plot(model.x(2:1:end),U_true{1}(1,2:1:end),'--','color',[0.8,0,0],'linewidth',2)
+plot(model.x(2:1:end),U_true{1}(1,2:1:end),'--','color',[0.8,0,0],'linewidth',2)
 % --- true states
 plot(model.x(2:end),U_true{n}(1,2:end),'-','color',[.6,.6,.6],'linewidth',3)
 hold on;

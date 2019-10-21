@@ -9,13 +9,13 @@ close all
 test = 1; % 1: overtaking, 2: congested traffic, 3: queue clearance, 4:creeping traffic
 Npc = 1500; % number of particles
 Nr = 1; % number of simulation runs
-spatial_correlation = false; % toggle SCNM
+spatial_correlation = true; % toggle SCNM
 show_sim = false; % toggle simulation plots
 show_est = false; % toggle estimation plots
 len = 60; % 60 characteristic length for spatial correlation
 T_pi = []; % particle influence summary table
 directory = pwd;
-foldername = sprintf('test%d_sim_porous',test);
+foldername = sprintf('test%d_fil',test);
 mkdir(foldername);
 directory = fullfile(directory,foldername);
 
@@ -38,7 +38,7 @@ for pc = 1:length(Npc)
         pf.meas_pt = [3 model_est.N/2 model_est.N-3]; % sensor location
         pf.init_stdev = 0.05; % initial noise stdev
         pf.model_stdev = [0.02,0.03]; % model noise stdev for class 1 and 2
-        pf.meas_stdev = 0.06; % measurement noise stdev
+        pf.meas_stdev = 0.06; % 0.06measurement noise stdev
 
         U_true_c1 = zeros([model_true.M model_true.N]); U_true_c2 = U_true_c1;
         U_est_c1 = U_true_c1; U_est_c2 = U_true_c1; U_sim_c1 = U_true_c1; U_sim_c2 = U_true_c1;
@@ -63,7 +63,8 @@ for pc = 1:length(Npc)
             
             % **************** plot forward sim *****************
             if show_sim
-                if mod(n,5)==0
+%                 if mod(n,5)==0
+if n==5
                     fig = plot_compare(n,U_true,U_est,model_est);
                     filename = sprintf('simulation_%d_%03d',test,n);
                     path = fullfile(directory,filename);
@@ -199,10 +200,10 @@ for pc = 1:length(Npc)
             if show_est
                 if mod(n,5)==0
                     fig = plot_est(n,U_true,U_res,model_est,pf,U_meas_true,x_next);
-                    drawnow
-                    %             filename = sprintf('pf_test%d_%03d',test,n);
-                    %             path = fullfile(directory,filename);
-                    %             saveas(gca,path,'png')
+%                     drawnow
+                    filename = sprintf('pf_test%d_%03d',test,n);
+                    path = fullfile(directory,filename);
+                    saveas(gca,path,'png')
                 end
             end
             
