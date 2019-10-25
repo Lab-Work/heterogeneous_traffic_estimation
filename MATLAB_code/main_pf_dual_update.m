@@ -128,22 +128,82 @@ for pc = 1:length(Npc)
         end
         %% Perform time propagation to obtain priori particles
         tic
-        x_next = x; y_next = zeros(size(measure(U_est{1},pf))); N_eff = zeros(1,model_true.M);
+        x_next = x;
+        flow_next_param = x;
+        y_next = zeros(size(measure(U_est{1},pf)));
+        N_eff = zeros(1,model_true.M);
         U_res{1} = U0_est;
         theta = [model_est.vm1, model_est.rm1, model_est.rm2]';
+        m = numel(y_miu);
+        Nm = 300;
+        theta_matrix = zeros(3,Nm);
         
         %   ****************************** PARTICLE FILTER STARTS ***********************************
         for n = 2:model_true.M
             %     fprintf('running time = %d\n',n);
+            U_est_temp = mean(x,3);
             x(x<0)=0;
+            y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement
+            
+            % boundaries
             d1l_temp = model_est.d1l(n);
             d2l_temp = model_est.d2l(n);
             d1r_temp = model_est.d1r(n);
             d2r_temp = model_est.d2r(n);
+
+            % =============== dual parameter estimation ========================
             
+            switch test
+                case 1
+                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
+                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,Nm]);
+                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
+                    theta_stdev = [0.005, 0.005, 0.005];
+                case 2
+                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.01,[1,Nm]);
+                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.01,[1,Nm]);
+                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
+                case 3
+                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
+                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,Nm]);
+                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
+                case 4
+                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
+                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.002,[1,Nm]);
+                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.002,[1,Nm]);
+            end
+            
+            for p = 1:Nm
+                %------ predict ---------
+                theta_matrix(:,p) = theta(:,n-1)+normrnd(zeros(size(theta,1),1),theta_stdev');
+                flow_next_param(:,:,p) = solver_flow_dual(n-1,U_est_temp,model_est,theta_matrix(:,p));
+                flow_next_param(flow_next_param<0)=0;
+                
+                %------- parameter update -----
+                noise_y = y_miu + normrnd(0,pf.meas_stdev,size(y_miu));
+                y_next(:,:,p) = measure(flow_next_param(:,:,p),pf) + noise_y;
+                y_next(y_next<0) = 0;
+                h = [y_next(1,:,p)'; y_next(2,:,p)']; % measurement equation
+                wtp(p) = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2) * ...
+                    exp(-1/2 * (y_true - h)'* R^(-1) * (y_true - h));       
+                
+                %------ normalize weight ----
+                wtp = wtp./sum(wtp); % make sure all the weights of each state i sum up to one
+                N_eff_param(n) = (sum(wtp.^2))^(-1); % effective particle size [HOW TO AVOID THE CURSE OF DIMENSIONALITY: SCALABILITY OF PARTICLE FILTERS WITH AND WITHOUT IMPORTANCE WEIGHTS?]
+            end
+            
+            % ------ resampling -----
+            for p = 1:Nm
+                theta_matrix(:,p) = theta_matrix(:,(find(rand <= cumsum(wtp),1)));
+            end
+            
+            theta(:,n) = mean(theta_matrix,2);
+            
+         
+            
+            % =============== dual state estimation ========================
             for p = 1:pf.Np
                 %^^^^^^^^^^^^^^ process noise ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                % ///////////////////////////////////////////////////////
                 if spatial_correlation
                     sum_x_1 = 0; sum_x_2 = 0; sum_y = 0;
                     for i = 1:size(V,1)
@@ -153,7 +213,6 @@ for pc = 1:length(Npc)
                     noise_x_1 = x_miu + sum_x_1;
                     noise_x_2 = x_miu + sum_x_2;
                 end
-                % ///////////////////////////////////////////////////////
                 
                 %^^^^^^^^^^^^^^ measurement noise ^^^^^^^^^^^^^^^^^^^^^^^
                 noise_y = y_miu + normrnd(0,pf.meas_stdev,size(y_miu));
@@ -172,7 +231,7 @@ for pc = 1:length(Npc)
                 end
                 
                 %------ model predict --------------
-                flow_next = solver_flow_dual(n-1,x(:,:,p),model_est,theta(:,n-1));
+                flow_next = solver_flow_dual(n-1,x(:,:,p),model_est,theta(:,n));
                 
                 if spatial_correlation
                     x_next(:,:,p) = [flow_next(1,:) + noise_x_1; flow_next(2,:) + noise_x_2]; %correlated
@@ -184,13 +243,12 @@ for pc = 1:length(Npc)
                 %------ measurement update ---------
                 y_next(:,:,p) = measure(x_next(:,:,p),pf) + noise_y;
                 y_next(y_next<0) = 0;
-                y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement
+                
                 h = [y_next(1,:,p)'; y_next(2,:,p)']; % measurement equation
-                m = size(h,1)*size(h,2);
                 wt(p) = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2) * ...
                     exp(-1/2 * (y_true - h)'* R^(-1) * (y_true - h));
+                
             end
-            
             %------ normalize weight ----
             wt = wt./sum(wt); % make sure all the weights of each state i sum up to one
             N_eff(n) = (sum(wt.^2))^(-1); % effective particle size [HOW TO AVOID THE CURSE OF DIMENSIONALITY: SCALABILITY OF PARTICLE FILTERS WITH AND WITHOUT IMPORTANCE WEIGHTS?]
@@ -203,61 +261,27 @@ for pc = 1:length(Npc)
             end
             
             
-
-            %   ******************************* PARTICLE FILTER ENDS **********************************
-            
             U_est_temp = mean(x_next,3); % take mean
             %     U_est_temp = x_next(:,:,ind); % take MAP
             U_est_temp(U_est_temp<0) = 0;
             U_res{n} = U_est_temp;
             U_est_c1(n,:) = U_est_temp(1,:);
-            U_est_c2(n,:) = U_est_temp(2,:);
+            U_est_c2(n,:) = U_est_temp(2,:);         
             
-            
-            
-            
-            % =============== dual parameter estimation ========================
-            theta_matrix = [];
-            switch test
-                case 1
-                    theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,100]);
-                    theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,100]);
-                    theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,100]);
-                case 2
-                    theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.01,[1,100]);
-                    theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.01,[1,100]);
-                    theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,100]);
-                case 3
-                    theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,100]);
-                    theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,100]);
-                    theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,100]);
-                case 4
-                    theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,100]);
-                    theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.002,[1,100]);
-                    theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.002,[1,100]);
-            end
-            
-                
-                
-            for pp = 1:100
-                diff(pp) = norm(solver_flow_dual(n-1,U_res{n-1},model_est,theta_matrix(:,pp))-U_est_temp);% dissimilarity measure
-            end
-            [~,ind] = min(diff);
-            theta(:,n) = theta_matrix(:,ind);
             
             %     --------------------------- plot and save ---------------------------
             if show_est
                 if mod(n,5)==0
                     fig = plot_est(n,U_true,U_res,model_est,pf,U_meas_true,x_next);
-%                     drawnow
-                                filename = sprintf('pf_test%d_%03d',test,n);
-                                path = fullfile(directory,filename);
-                                saveas(gca,path,'png')
+                    drawnow
+%                     filename = sprintf('pf_test%d_%03d',test,n);
+%                     path = fullfile(directory,filename);
+%                     saveas(gca,path,'png')
                 end
             end
             
             x = x_next;
-        end
+        end %n
         runtime(r) = toc;
         
         %% write video

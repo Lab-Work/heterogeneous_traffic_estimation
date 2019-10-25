@@ -9,7 +9,7 @@ close all
 test = 1; % 1: overtaking, 2: congested traffic, 3: queue clearance, 4:creeping traffic
 Npc = 1500; % number of particles
 Nr = 1; % number of simulation runs
-spatial_correlation = true; % toggle SCNM
+spatial_correlation = false; % toggle SCNM
 show_sim = false; % toggle simulation plots
 show_est = false; % toggle estimation plots
 len = 60; % 60 characteristic length for spatial correlation
@@ -127,6 +127,7 @@ if n==5
             d1r_temp = model_est.d1r(n);
             d2r_temp = model_est.d2r(n);
             
+            y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement
             for p = 1:pf.Np
                 %^^^^^^^^^^^^^^ process noise ^^^^^^^^^^^^^^^^^^^^^^^^^^^
                 % ///////////////////////////////////////////////////////
@@ -170,7 +171,7 @@ if n==5
                 %------ measurement update ---------
                 y_next(:,:,p) = measure(x_next(:,:,p),pf) + noise_y;
                 y_next(y_next<0) = 0;
-                y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement
+            
                 h = [y_next(1,:,p)'; y_next(2,:,p)']; % measurement equation
                 m = size(h,1)*size(h,2);
                 wt(p) = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2) * ...
