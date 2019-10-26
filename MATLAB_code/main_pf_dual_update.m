@@ -15,11 +15,11 @@ model_est = model_param; model_est.model_name = 'Creeping model';
 
 perturbation = [1]; % for sensitivity analysis
 test = 1; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
-Npc = 1000;
-Nr = 4; % number of simulation runs
+Npc = 1500;
+Nr = 1; % number of simulation runs
 spatial_correlation = false;
-show_sim = false;
-show_est = false;
+show_sim = true;
+show_est = true;
 len = 60; % 60 characteristic length for spatial correlation
 T_pi = []; % particle influence summary table
 directory = pwd;
@@ -135,7 +135,7 @@ for pc = 1:length(Npc)
         U_res{1} = U0_est;
         theta = [model_est.vm1, model_est.rm1, model_est.rm2]';
         m = numel(y_miu);
-        Nm = 1000;
+        Nm = 1500;
         theta_matrix = zeros(3,Nm);
         
         %   ****************************** PARTICLE FILTER STARTS ***********************************
