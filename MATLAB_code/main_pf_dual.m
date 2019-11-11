@@ -15,9 +15,10 @@ model_est = model_param; model_est.model_name = 'Creeping model';
 
 perturbation = [1]; % for sensitivity analysis
 test = 1; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
+% Npc = [500 800 1000 1500 2000];
 Npc = 1500;
-Nr = 1; % number of simulation runs
-spatial_correlation = false;
+Nr = 4; % number of simulation runs
+spatial_correlation = true;
 show_sim = false;
 show_est = false;
 len = 60; % 60 characteristic length for spatial correlation

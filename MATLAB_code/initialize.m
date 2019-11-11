@@ -44,23 +44,23 @@ switch test
             case 'True model'
                 % Initial densities
                 U(1,1:thres1) = eps;
-                U(1,thres1+1:ceil(thres2*model_param.N/model_param.len)) = .7;
+                U(1,thres1+1:ceil(thres2*model_param.N/model_param.len)) = .5;
                 U(1,ceil(thres2*model_param.N/model_param.len)+1:model_param.N) = eps;
                 U(2,1:ceil(thres2*model_param.N/model_param.len)) = eps;
-                U(2,ceil(thres2*model_param.N/model_param.len)+1:ceil(thres3*model_param.N/model_param.len)) = .7;
+                U(2,ceil(thres2*model_param.N/model_param.len)+1:ceil(thres3*model_param.N/model_param.len)) = .6;
                 U(2,ceil(thres3*model_param.N/model_param.len)+1:model_param.N) = eps;
                 % Boundary densities
-                model_param.d1l = (square(freq*[1:model_param.M])*0.04+0.04+0.05)'; % upstream
-                model_param.d2l = (square(freq*[1:model_param.M])*0.04+0.04+0.05)'; 
+                model_param.d1l = (square(freq*[1:model_param.M])*0.04+0.1)'; % upstream
+                model_param.d2l = (square(freq*[1:model_param.M])*0.04+0.1)'; 
                 model_param.d1r = 0+0*model_param.t; % downstream
                 model_param.d2r = 0+0*model_param.t;
                 
             case 'Creeping model'
                 U(1,1:thres1) = eps;
-                U(1,thres1+1:ceil(thres2*model_param.N/model_param.len)) = .5;
+                U(1,thres1+1:ceil(thres2*model_param.N/model_param.len)) = .7;
                 U(1,ceil(thres2*model_param.N/model_param.len)+1:model_param.N) = eps;
                 U(2,1:ceil(thres2*model_param.N/model_param.len)) = eps;
-                U(2,ceil(thres2*model_param.N/model_param.len)+1:ceil(thres3*model_param.N/model_param.len)) = .9;
+                U(2,ceil(thres2*model_param.N/model_param.len)+1:ceil(thres3*model_param.N/model_param.len)) = .7;
                 U(2,ceil(thres3*model_param.N/model_param.len)+1:model_param.N) = eps;
 
                 model_param.d1l = (square(freq*[1:model_param.M])*0.04+0.04)';

@@ -14,12 +14,13 @@ model_true = model_param; model_true.model_name = 'True model';
 model_est = model_param; model_est.model_name = 'Creeping model';
 
 perturbation = [1]; % for sensitivity analysis
-test = 1; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
-Npc = 1500;
-Nr = 1; % number of simulation runs
+test = 4; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
+Npc = [500 800 1000 1500 2000]; % number of particles
+% Npc = 1500;
+Nr = 4; % number of simulation runs
 spatial_correlation = false;
-show_sim = true;
-show_est = true;
+show_sim = false;
+show_est = false;
 len = 60; % 60 characteristic length for spatial correlation
 T_pi = []; % particle influence summary table
 directory = pwd;
@@ -135,7 +136,7 @@ for pc = 1:length(Npc)
         U_res{1} = U0_est;
         theta = [model_est.vm1, model_est.rm1, model_est.rm2]';
         m = numel(y_miu);
-        Nm = 1500;
+        Nm = pf.Np;
         theta_matrix = zeros(3,Nm);
         
         %   ****************************** PARTICLE FILTER STARTS ***********************************
@@ -163,14 +164,17 @@ for pc = 1:length(Npc)
                     %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.01,[1,Nm]);
                     %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.01,[1,Nm]);
                     %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
+                    theta_stdev = [0.01, 0.01, 0.005];
                 case 3
                     %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
                     %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,Nm]);
                     %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
+                    theta_stdev = [0.005, 0.005, 0.005];
                 case 4
                     %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
                     %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.002,[1,Nm]);
                     %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.002,[1,Nm]);
+                    theta_stdev = [0.005, 0.002, 0.002];
             end
             
             for p = 1:Nm
@@ -329,3 +333,4 @@ end % end of all particle choices
 colNames = {'particles','runtime','beta_1','beta_2','mean_N_eff','improvement_1','improvement_2'};
 T_pi = array2table(T_pi,'VariableNames',colNames);
 save(sprintf('test%d_corr_adaptive_mac.mat',test),'T_pi');
+T_pi
