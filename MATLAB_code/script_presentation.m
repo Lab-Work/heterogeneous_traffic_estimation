@@ -51,7 +51,7 @@ xlabel('Total density (r)');
 ylabel('Flow')
 
 %% particle influence
-num = xlsread('beeq.xlsx','test3');
+num = xlsread('beeq.xlsx','test1_new');
 close all
 figure;
 plot(num(2:6,1),num(2:6,2),'k','linewidth',2,'linestyle','-'); % PF
@@ -60,6 +60,7 @@ plot(num(2:6,1),num(10:14,2),'r','linewidth',2,'linestyle','-.'); % SCNM
 plot(num(2:6,1),num(18:22,2),'k','linewidth',2,'linestyle','-.'); % PAPF
 plot(num(2:6,1),num(26:30,2),'r','linewidth',2,'linestyle','-'); % SCNM+PAPF
 xlim([500,2000]); 
+ylim([0 500]);
 xlabel('$N_p$','Interpreter','Latex');
 ylabel('Running time (sec/run)')
 h = legend({'PF','PF+SCNM','PAPF','PAPF+SCNM'},'Orientation','vertical','fontsize',20);
@@ -78,7 +79,7 @@ plot(num(2:6,1),num(18:22,5),'k','linewidth',2,'linestyle','-.'); % PAPF
 plot(num(2:6,1),num(26:30,5),'r','linewidth',2,'linestyle','-'); % SCNM+PAPF
 xlim([500,2000]); 
 xlabel('$N_p$','Interpreter','Latex');
-ylabel('$N_{\text{eff}}$','Interpreter','Latex');
+ylabel('$N_{eff}$','Interpreter','Latex');
 % h = legend({'PF','SCNM','PAPF','SCNM+PAPF'},'Orientation','vertical','fontsize',20);
 set(h,'Location','NorthWest');
 title('$N_p$ vs. average $N_{eff}$','Interpreter','Latex');
@@ -94,7 +95,7 @@ plot(num(2:6,1),num(10:14,6),'r','linewidth',2,'linestyle','-.'); % SCNM
 plot(num(2:6,1),num(18:22,6),'k','linewidth',2,'linestyle','-.'); % PAPF
 plot(num(2:6,1),num(26:30,6),'r','linewidth',2,'linestyle','-'); % SCNM+PAPF
 xlim([500,2000]); 
-ylim([10 100]);
+ylim([0 60]);
 xlabel('$N_p$','Interpreter','Latex');
 ylabel('MAE reduction (\%)','Interpreter','Latex');
 % h = legend({'PF','SCNM','PAPF','SCNM+PAPF'},'Orientation','vertical','fontsize',20);set(h,'Location','NorthWest');
@@ -111,7 +112,7 @@ plot(num(2:6,1),num(10:14,7),'r','linewidth',2,'linestyle','-.'); % SCNM
 plot(num(2:6,1),num(18:22,7),'k','linewidth',2,'linestyle','-.'); % PAPF
 plot(num(2:6,1),num(26:30,7),'r','linewidth',2,'linestyle','-'); % SCNM+PAPFxlim([min(num(:,1)) max(num(:,1))]); 
 xlim([500,2000]); 
-ylim([10 100]);
+ylim([0 60]);
 xlabel('$N_p$','Interpreter','Latex');
 ylabel('MAE reduction (\%)','Interpreter','Latex');
 % h = legend({'PF','SCNM','PAPF','SCNM+PAPF'},'Orientation','vertical','fontsize',20);set(h,'Location','NorthWest');
