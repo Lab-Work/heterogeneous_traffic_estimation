@@ -1,4 +1,4 @@
-# heterogeneous_tse_IEEE_ITS_2019
+# heterogeneous_traffic_estimation
 
 Yanbing Wang
 October, 2019
