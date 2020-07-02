@@ -4,9 +4,9 @@ Yanbing Wang
 October, 2019
 
 ### Overview
-This repository contains the source code for heterogeneous traffic estimation. This resulting journal paper is submitted to IEEE Transactions on Intelligent Transportation Systems (T-ITS). Suggested citation: 
+This repository contains the source code for heterogeneous traffic estimation. This resulting journal paper is submitted to *Transportmetrica A: Transport Science* Journal. Suggested citation: 
 
-Yanbing Wang and Daniel B. Work. "Enhanced estimation for heterogeneous traffic". *IEEE Transactions on Intelligent Transportation Systems*, 2019. (In review).
+Yanbing Wang and Daniel B. Work. "Enhanced estimation for heterogeneous traffic". *Transportmetrica A: Transport Science*, 2020. (In review).
 
 ### Usage
 #### Running variations of particle filters:
