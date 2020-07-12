@@ -5,13 +5,18 @@ fig = subplot(2,1,1);
 plot(model.x(2:1:end),U_true{n}(1,2:end),'-','color',[.6,.6,.6],'linewidth',3), hold on
 plot(model.x(2:end),U_est{n}(1,2:end),'-','color',[.5,.7,.3],'linewidth',3)
 plot(model.x(pf.meas_pt),U_meas_true{n}(1,:),'r*','markers',20);
-for i = 1:model.N
-    if mod(i,model.N/20)==0
-        scatter(model.x(i).*ones(pf.Np,1),x_next(1,i,:),'.','MarkerEdgeColor','k','MarkerEdgeAlpha',.1)
-        hold on
-    end
-end
-hold off
+% for i = 1:model.N
+%     if mod(i,model.N/20)==0
+%         if n==5
+%             i
+%         end
+%         scatter(model.x(i).*ones(pf.Np,1),x_next(1,i,:),'.','MarkerEdgeColor','k','MarkerEdgeAlpha',.1)
+%         hold on
+%     end
+% end
+i_arr = linspace(2,model.N,model.N/2);
+scatter(repmat(model.x(i_arr),1,pf.Np),reshape(x_next(1,i_arr,:),1,numel(i_arr)*pf.Np),'.','MarkerEdgeColor','k','MarkerEdgeAlpha',.1)
+
 
 %     title(sprintf('Small vehicle density at t=%d',n),'interpreter', 'latex')
 title(sprintf('timestep=%d',n),'interpreter', 'latex');

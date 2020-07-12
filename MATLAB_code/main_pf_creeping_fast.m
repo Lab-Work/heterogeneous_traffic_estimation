@@ -1,16 +1,19 @@
 close all
-% clc
-% clear all
+clear all
 % October 2019
 % Yanbing Wang
 % Vanderbilt University
 
+% particle filter for heterogeneous traffic state
+% estimation (vectorized implementation to speed up runtime)
+
+
 % =========== test setup ==============
-test = 4; % 1: overtaking, 2: congested traffic, 3: queue clearance, 4:creeping traffic
+test = 1; % 1: overtaking, 2: congested traffic, 3: queue clearance, 4:creeping traffic
 Npc = [500 800 1000 1500 2000]; % number of particles
 % Npc = 1500;
-Nr = 4; % number of simulation runs
-spatial_correlation = false; % toggle SCNM
+Nr = 1; % number of simulation runs
+spatial_correlation = 1; % toggle SCNM
 show_sim = false; % toggle simulation plots
 show_est = false; % toggle estimation plots
 len = 60; % 60 characteristic length for spatial correlation
@@ -52,7 +55,7 @@ for pc = 1:length(Npc)
         U_true{1} = U0_true; U_est{1} = U0_est;
         U_meas_true{1} = measure_true(U_true{1},pf);
         
-        for n = 1:model_true.M-1
+        for n = 1:model_true.M-1 % iterate time
             U_true{n+1} = solver_flow(n,U_true{n},model_true);
             U_true_c1(n+1,:) = U_true{n+1}(1,:);
             U_true_c2(n+1,:) = U_true{n+1}(2,:);
@@ -80,6 +83,10 @@ for pc = 1:length(Npc)
         x = zeros([size(U0_est),pf.Np]); % class x cell x particles
         wt = ones(pf.Np, 1)/pf.Np;
         y_miu = zeros(size(measure(U_est{1},pf)));
+        m = numel(y_miu); % measurement vector size
+        magic1 = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2);
+        magic2 = inv(R)*(-0.5);
+        sum_init_1 = 0; sum_init_2 = 0;
         
         % ******************* spatial correlation **********************
         if spatial_correlation
@@ -91,33 +98,27 @@ for pc = 1:length(Npc)
             x_miu = zeros(size(tau));
             init_miu = x_miu;
             
-            for p = 1:pf.Np
-                %^^^^^^^^^^^^^^ initial noise ^^^^^^^^^^^^^^^^^^^^^^^
-                sum_init_1 = 0; sum_init_2 = 0;
-                for i = 1:size(V,1)
-                    sum_init_1 = sum_init_1 + sqrt(D(i,i)) * randn * pf.init_stdev * V(:,i)';
-                    sum_init_2 = sum_init_2 + sqrt(D(i,i)) * randn * pf.init_stdev * V(:,i)';
-                end
-                noise_init_1 = init_miu + sum_init_1; % a random field at time n
-                noise_init_2 = init_miu + sum_init_2;
-                x(:,:,p) = [U0_est(1,:) + noise_init_1; U0_est(2,:) + noise_init_2];
-                x(x<0)=0;
-                
+%           %^^^^^^^^^^^^^^ initial noise ^^^^^^^^^^^^^^^^^^^^^^^
+            for i = 1:size(V,1)
+                sum_init_1 = sum_init_1 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.init_stdev * V(:,i)';
+                sum_init_2 = sum_init_2 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.init_stdev * V(:,i)';
             end
+            x = cat(3, (U0_est(1,:) + sum_init_1)', (U0_est(2,:) + sum_init_2)');
+            x = permute(x, [3 1 2]);
+            x(x<0)=0; 
             
             % ******************* Uncorrelated **********************
         else
-            for p = 1:pf.Np
-                %^^^^^^^^^^^^^^ initial noise ^^^^^^^^^^^^^^^^^^^^^^^
-                x(:,:,p) = U0_est + normrnd(0,pf.init_stdev,[size(U0_est,1), size(U0_est,2)]);
-                x(x<0)=0;
-                
-            end
+            x = U0_est + normrnd(0,pf.init_stdev,size(x));
         end
-% ================ Perform time propagation to obtain priori particles ================
+        
+    % ================ Perform time propagation to obtain priori particles ================
         tic
-        x_next = x; y_next = zeros(size(measure(U_est{1},pf))); N_eff = zeros(1,model_true.M);
+        x_next = x; 
+        y_next = zeros(size(measure(U_est{1},pf)));
+        N_eff = zeros(1,model_true.M);
         U_res{1} = U0_est;
+        
     %  ****************************** PARTICLE FILTER STARTS ***********************************
         for n = 2:model_true.M
             %     fprintf('running time = %d\n',n);
@@ -127,24 +128,21 @@ for pc = 1:length(Npc)
             d1r_temp = model_est.d1r(n);
             d2r_temp = model_est.d2r(n);
             
-            y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement
-            for p = 1:pf.Np
-                %^^^^^^^^^^^^^^ process noise ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                % ///////////////////////////////////////////////////////
-                if spatial_correlation
-                    sum_x_1 = 0; sum_x_2 = 0; sum_y = 0;
-                    for i = 1:size(V,1)
-                        sum_x_1 = sum_x_1 + sqrt(D(i,i)) * randn * pf.model_stdev(1) * V(:,i)';
-                        sum_x_2 = sum_x_2 + sqrt(D(i,i)) * randn * pf.model_stdev(2) * V(:,i)';
-                    end
-                    noise_x_1 = x_miu + sum_x_1;
-                    noise_x_2 = x_miu + sum_x_2;
+            y_true = [U_meas_true{n}(1,:)';U_meas_true{n}(2,:)']; % true measurement, with intrinsic measurement error
+            
+            % ^^^^^^^^^^^^^^ process noise vectorized ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            if spatial_correlation
+                sum_x_1 = 0; sum_x_2 = 0; sum_y = 0;
+                for i = 1:size(V,1)
+                    sum_x_1 = sum_x_1 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.model_stdev(1) * V(:,i)';
+                    sum_x_2 = sum_x_2 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.model_stdev(2) * V(:,i)';
                 end
-                % ///////////////////////////////////////////////////////
-                
-                %^^^^^^^^^^^^^^ measurement noise ^^^^^^^^^^^^^^^^^^^^^^^
-                noise_y = y_miu + normrnd(0,pf.meas_stdev,size(y_miu));
-                
+            end
+            
+            % ^^^^^^^^^^^^^^ measurement noise vectorized ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            noise_y = y_miu + normrnd(0,pf.meas_stdev,[size(y_miu), pf.Np]);
+  
+            for p = 1:pf.Np
                 %^^^^^^^^^^^^^^ boundary noise ^^^^^^^^^^^^^^^^^^^^^^^^^^
                 if test == 2
                     model_est.d1l(n) = d1l_temp + wblrnd(0.5,6);
@@ -159,25 +157,29 @@ for pc = 1:length(Npc)
                 end
                 
                 %------ model predict --------------
-                flow_next = solver_flow(n-1,x(:,:,p),model_est);
+                flow_next(:,:,p) = solver_flow(n-1,x(:,:,p),model_est); 
                 
-                if spatial_correlation
-                    x_next(:,:,p) = [flow_next(1,:) + noise_x_1; flow_next(2,:) + noise_x_2]; %correlated
-                else
-                    x_next(:,:,p) = flow_next + normrnd(0,pf.model_stdev(1),[size(flow_next,1),size(flow_next,2)]); %uncorrelated
-                end
-                x_next(x_next<0)=0;
-                
-                %------ measurement update ---------
-                y_next(:,:,p) = measure(x_next(:,:,p),pf) + noise_y;
-                y_next(y_next<0) = 0;
-            
-                h = [y_next(1,:,p)'; y_next(2,:,p)']; % measurement equation
-                m = size(h,1)*size(h,2);
-                wt(p) = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2) * ...
-                    exp(-1/2 * (y_true - h)'* R^(-1) * (y_true - h));
             end
             
+             %------ model predict vectorized --------------
+            if spatial_correlation          
+                x_next = cat(3, reshape(flow_next(1,:,:),model_est.N,pf.Np) + sum_x_1',...
+                    reshape(flow_next(2,:,:),model_est.N,pf.Np) + sum_x_2'); % 2x40x1500
+                x_next = permute(x_next, [3 1 2]);
+                x_next(x_next<0)=0;
+            else
+                x_next = flow_next + normrnd(0,pf.model_stdev(1),size(flow_next)); %uncorrelated
+            end
+            
+            %------ measurement update vectorized --------- 
+            y_next = measure(x_next, pf) + noise_y; % 2x3x1500
+            y_next(y_next<0) = 0;
+            y_n = reshape(permute(y_next,[2 1 3]), m, pf.Np);
+            
+            wt = magic1 * ...
+                exp(sum((y_true - y_n).* (magic2 * (y_true - y_n))));
+
+           
             %------ normalize weight ----
             wt = wt./sum(wt); % make sure all the weights of each state i sum up to one
             N_eff(n) = (sum(wt.^2))^(-1); % effective particle size [HOW TO AVOID THE CURSE OF DIMENSIONALITY: SCALABILITY OF PARTICLE FILTERS WITH AND WITHOUT IMPORTANCE WEIGHTS?]
@@ -217,9 +219,9 @@ for pc = 1:length(Npc)
         
         %% plot estimated densities
         
-        % plot_six(U_true_c1,U_sim_c1,U_est_c1,U_true_c2,U_sim_c2,U_est_c2,model_true);
-        % plot_six_gray(U_true_c1,U_sim_c1,U_est_c1,U_true_c2,U_sim_c2,U_est_c2,model_true);
-        
+%         plot_six(U_true_c1,U_sim_c1,U_est_c1,U_true_c2,U_sim_c2,U_est_c2,model_true);
+%         plot_six_gray(U_true_c1,U_sim_c1,U_est_c1,U_true_c2,U_sim_c2,U_est_c2,model_true);
+%         
         %% plot effective particle size
         % plot_eps(N_eff)
         N_eff_mean(r) = mean(N_eff);

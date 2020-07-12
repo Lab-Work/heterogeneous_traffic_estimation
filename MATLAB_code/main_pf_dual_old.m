@@ -14,11 +14,11 @@ model_true = model_param; model_true.model_name = 'True model';
 model_est = model_param; model_est.model_name = 'Creeping model';
 
 perturbation = [1]; % for sensitivity analysis
-test = 4; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
-Npc = [500 800 1000 1500 2000]; % number of particles
-% Npc = 1500;
-Nr = 4; % number of simulation runs
-spatial_correlation = false;
+test = 1; % 1: overtaking, 2: queue clearance, 3: congested flow, 4:creeping
+% Npc = [500 800 1000 1500 2000]; % number of particles
+Npc = 500;
+Nr = 1; % number of simulation runs
+spatial_correlation = true;
 show_sim = false;
 show_est = false;
 len = 60; % 60 characteristic length for spatial correlation
@@ -76,9 +76,9 @@ for pc = 1:length(Npc)
             
             % **************** plot forward sim *****************
             if show_sim
-                if n == 1
-                    fig = plot_compare(n,U_true,U_est,model_est);
-                end
+%                 if n == 1
+%                     fig = plot_compare(n,U_true,U_est,model_est);
+%                 end
                 if mod(n,5)==0
                     fig = plot_compare(n,U_true,U_est,model_est);
                     %             filename = sprintf('simulation_%d_%03d',test,n);
@@ -90,10 +90,16 @@ for pc = 1:length(Npc)
         end
         
         %% initialize particles and weights
-        R = covariance(pf,100); % numbers do not matter
+        
+        R = covariance(pf,100); % measurement covariance matrix
         x = zeros([size(U0_est),pf.Np]); % class x cell x particles
         wt = ones(pf.Np, 1)/pf.Np;
         y_miu = zeros(size(measure(U_est{1},pf)));
+        m = numel(y_miu); % measurement vector size
+        magic1 = (2 * pi)^(-m/2) * (sqrt(sum(sum(abs(R).^2))))^(-1/2);
+        magic2 = inv(R)*(-0.5);
+        sum_init_1 = 0; sum_init_2 = 0;
+        
         % ******************* spatial correlation **********************
         if spatial_correlation
             tau = 0:1:model_est.N-1;
@@ -104,29 +110,20 @@ for pc = 1:length(Npc)
             x_miu = zeros(size(tau));
             init_miu = x_miu;
             
-            for p = 1:pf.Np
-                %^^^^^^^^^^^^^^ initial noise ^^^^^^^^^^^^^^^^^^^^^^^
-                sum_init_1 = 0; sum_init_2 = 0;
-                for i = 1:size(V,1)
-                    sum_init_1 = sum_init_1 + sqrt(D(i,i)) * randn * pf.init_stdev * V(:,i)';
-                    sum_init_2 = sum_init_2 + sqrt(D(i,i)) * randn * pf.init_stdev * V(:,i)';
-                end
-                noise_init_1 = init_miu + sum_init_1; % a random field at time n
-                noise_init_2 = init_miu + sum_init_2;
-                x(:,:,p) = [U0_est(1,:) + noise_init_1; U0_est(2,:) + noise_init_2];
-                x(x<0)=0;
-                
+%           %^^^^^^^^^^^^^^ initial noise vectorized ^^^^^^^^^^^^^^^^^^^^^^^
+            for i = 1:size(V,1)
+                sum_init_1 = sum_init_1 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.init_stdev * V(:,i)';
+                sum_init_2 = sum_init_2 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.init_stdev * V(:,i)';
             end
+            x = cat(3, (U0_est(1,:) + sum_init_1)', (U0_est(2,:) + sum_init_2)');
+            x = permute(x, [3 1 2]);
+            x(x<0)=0; 
             
-            % ******************* Uncorrelated **********************
+        % ******************* Uncorrelated vectorized **********************
         else
-            for p = 1:pf.Np
-                %^^^^^^^^^^^^^^ initial noise ^^^^^^^^^^^^^^^^^^^^^^^
-                x(:,:,p) = U0_est + normrnd(0,pf.init_stdev,[size(U0_est,1), size(U0_est,2)]);
-                x(x<0)=0;
-                
-            end
+           x = U0_est + normrnd(0,pf.init_stdev,size(x));
         end
+        
         %% Perform time propagation to obtain priori particles
         tic
         x_next = x;
@@ -134,8 +131,7 @@ for pc = 1:length(Npc)
         y_next = zeros(size(measure(U_est{1},pf)));
         N_eff = zeros(1,model_true.M);
         U_res{1} = U0_est;
-        theta = [model_est.vm1, model_est.rm1, model_est.rm2]';
-        m = numel(y_miu);
+        theta = [model_est.vm1, model_est.rm1, model_est.rm2]'; % theta^{0|0}
         Nm = pf.Np;
         theta_matrix = zeros(3,Nm);
         
@@ -152,35 +148,56 @@ for pc = 1:length(Npc)
             d1r_temp = model_est.d1r(n);
             d2r_temp = model_est.d2r(n);
 
+
+                
             % =============== dual parameter estimation ========================
             
             switch test
                 case 1
-                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
-                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,Nm]);
-                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
                     theta_stdev = [0.005, 0.005, 0.005];
                 case 2
-                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.01,[1,Nm]);
-                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.01,[1,Nm]);
-                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
                     theta_stdev = [0.01, 0.01, 0.005];
                 case 3
-                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
-                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.005,[1,Nm]);
-                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.005,[1,Nm]);
                     theta_stdev = [0.005, 0.005, 0.005];
                 case 4
-                    %                     theta_matrix(1,:) = theta(1,n-1)+normrnd(0,0.005,[1,Nm]);
-                    %                     theta_matrix(2,:) = theta(2,n-1)+normrnd(0,0.002,[1,Nm]);
-                    %                     theta_matrix(3,:) = theta(3,n-1)+normrnd(0,0.002,[1,Nm]);
                     theta_stdev = [0.005, 0.002, 0.002];
             end
             
+            
+            % ^^^^^^^^^^^^^^ process noise vectorized ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            if spatial_correlation
+                noise_x_1 = 0; noise_x_2 = 0; sum_y = 0;
+                for i = 1:size(V,1)
+                    noise_x_1 = noise_x_1 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.model_stdev(1) * V(:,i)';
+                    noise_x_2 = noise_x_2 + sqrt(D(i,i)) * randn(pf.Np,1) * pf.model_stdev(2) * V(:,i)';
+                end
+                noise_x = [noise_x_1; noise_x_2];
+            else
+                noise_x = normrnd(0,pf.model_stdev(1),[size(U0_est,1),size(U0_est,2)]);
+            end
+            
+            % ^^^^^^^^^^^^^^ measurement noise vectorized ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            noise_y = y_miu + normrnd(0,pf.meas_stdev,[size(y_miu), pf.Np]);
+            
+            
             for p = 1:Nm
+                %^^^^^^^^^^^^^^ process noise ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+%                 if spatial_correlation
+%                     sum_x_1 = 0; sum_x_2 = 0; sum_y = 0;
+%                     for i = 1:size(V,1)
+%                         sum_x_1 = sum_x_1 + sqrt(D(i,i)) * randn * pf.model_stdev(1) * V(:,i)';
+%                         sum_x_2 = sum_x_2 + sqrt(D(i,i)) * randn * pf.model_stdev(2) * V(:,i)';
+%                     end
+%                     noise_x_1 = x_miu + sum_x_1;
+%                     noise_x_2 = x_miu + sum_x_2;
+%                     noise_x = [noise_x_1; noise_x_2];
+%                 else
+%                     noise_x = normrnd(0,pf.model_stdev(1),[size(U0_est,1),size(U0_est,2)]);
+%                 end
+
                 %------ predict ---------
-                theta_matrix(:,p) = theta(:,n-1)+normrnd(zeros(size(theta,1),1),theta_stdev');
-                flow_next_param(:,:,p) = solver_flow_dual(n-1,U_est_temp,model_est,theta_matrix(:,p));
+                theta_matrix(:,p) = theta(:,n-1)+normrnd(zeros(size(theta,1),1),theta_stdev'); % theta^{k|k-1}
+                flow_next_param(:,:,p) = solver_flow_dual(n-1,U_est_temp,model_est,theta_matrix(:,p)) + noise_x; % x^{k|k-1}
                 flow_next_param(flow_next_param<0)=0;
                 
                 %------- parameter update -----
@@ -201,7 +218,7 @@ for pc = 1:length(Npc)
                 theta_matrix(:,p) = theta_matrix(:,(find(rand <= cumsum(wtp),1)));
             end
             
-            theta(:,n) = mean(theta_matrix,2);
+            theta(:,n) = mean(theta_matrix,2); % theta^{k|k}
             
          
             
@@ -216,6 +233,9 @@ for pc = 1:length(Npc)
                     end
                     noise_x_1 = x_miu + sum_x_1;
                     noise_x_2 = x_miu + sum_x_2;
+                    noise_x = [noise_x_1; noise_x_2];
+                else
+                    noise_x = normrnd(0,pf.model_stdev(1),[size(U0_est,1),size(U0_est,2)]);
                 end
                 
                 %^^^^^^^^^^^^^^ measurement noise ^^^^^^^^^^^^^^^^^^^^^^^
@@ -236,12 +256,7 @@ for pc = 1:length(Npc)
                 
                 %------ model predict --------------
                 flow_next = solver_flow_dual(n-1,x(:,:,p),model_est,theta(:,n));
-                
-                if spatial_correlation
-                    x_next(:,:,p) = [flow_next(1,:) + noise_x_1; flow_next(2,:) + noise_x_2]; %correlated
-                else
-                    x_next(:,:,p) = flow_next + normrnd(0,pf.model_stdev(1),[size(flow_next,1),size(flow_next,2)]); %uncorrelated
-                end
+                x_next(:,:,p) = flow_next + noise_x;
                 x_next(x_next<0)=0;
                 
                 %------ measurement update ---------
