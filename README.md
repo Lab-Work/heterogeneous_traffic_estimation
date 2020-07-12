@@ -24,6 +24,6 @@ In `main_pf_creeping.m` or `main_pf_dual.m`
 
 #### Toggle image display:
 1. Set `show_sim = true` to turn on simulation plots, for example:
-<img src="https://github.com/yanb514/heterogeneous_tse_IEEE_ITS_2019/blob/master/figures_ieee/test1_sim_snapshots.png" width="350" height="200" />
+<img src="https://github.com/Lab-Work/heterogeneous_traffic_estimation/blob/master/figures/test1_sim_snapshots.png" width="350" height="200" />
 2. Set `show_est = true` to turn on estimation plots, for example:
-<img src="https://github.com/yanb514/heterogeneous_tse_IEEE_ITS_2019/blob/master/figures_ieee/test1_filter_snapshots.png" width="350" height="200" />
+<img src="https://github.com/Lab-Work/heterogeneous_traffic_estimation/blob/master/figures/test1_filter_snapshots.png" width="350" height="200" />
