@@ -1,7 +1,7 @@
 # heterogeneous_traffic_estimation
 
 Yanbing Wang
-October, 2019
+July, 2020
 
 ### Overview
 This repository contains the source code for heterogeneous traffic estimation. This resulting journal paper is submitted to *Transportmetrica A: Transport Science* Journal. Suggested citation: 
